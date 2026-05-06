@@ -1,0 +1,14 @@
+# conform-rgaa-agent crontab — installer via :
+#   crontab -u agent /opt/conform-rgaa-agent/infra/crontab.txt
+# Fuseau cron = UTC.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Boucle d'action : 1 run = 1 action (send_email OU scrape_rgaa OU idle).
+# Démarre 5h UTC, toutes les 15 min jusqu'à 21h UTC. Cap 10 envois/jour
+# enforced par send_email.py — au-delà, les runs servent au scrape RGAA.
+# Décalé de 7 min vs vps-acquire pour ne pas se chevaucher.
+7,22,37,52 5-21 * * * /opt/conform-rgaa-agent/run.sh
+
+# Ingest API hebdomadaire (lundi 03h00 UTC) — refresh emails depuis api-lannuaire
+0 3 * * 1 cd /opt/conform-rgaa-agent && doppler run --project conform-rgaa --config dev -- python3 scripts/ingest_api.py >> logs/ingest.log 2>&1

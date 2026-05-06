@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Runs : logs, mémoire, audit (peuvent contenir données scrapées + emails envoyés)
+logs/
+memory/
+
+# Kill switches (état runtime)
+PAUSE.flag
+PAUSE.email.flag
+
+# Secrets locaux (Doppler injecte au runtime, rien ne devrait être committé)
+.env
+.env.*
+*.env
