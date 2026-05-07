@@ -6,7 +6,7 @@ Pipeline :
   2. Lit le template mail.md (subject = ligne `# Subject:`, body = reste)
   3. Sélectionne 1 mairie (via --code-insee OU pool auto) :
        - email IS NOT NULL
-       - rgaa_status IN ('non_conforme','partiellement')
+       - rgaa_status = 'non_conforme'
        - contacted_at IS NULL
        - unsubscribed_at IS NULL
   4. Vérifie cap 10/jour UTC (refus exit 1 si dépassé)
@@ -33,8 +33,13 @@ DAILY_CAP = 10
 
 STATUS_HUMAN = {
     'non_conforme': 'non conforme',
+    'partiel': 'partiellement conforme',
+    'conforme': 'totalement conforme',
+    # Legacy mairies.rgaa_status vocab (scrape mention) — kept pour --code-insee
+    # sur mairies non auditées par axe-core.
     'partiellement': 'partiellement conforme',
     'totalement': 'totalement conforme',
+    'aucune_mention': 'sans déclaration RGAA publiée',
 }
 
 
@@ -66,32 +71,43 @@ def render(text, m):
             .replace('{{rgaa_status_human}}', STATUS_HUMAN.get(m['rgaa_status'], m['rgaa_status'] or ''))
             .replace('{{rgaa_page_url}}', m['rgaa_page_url'] or m['site_url'] or '')
             .replace('{{site_url}}', site_url)
-            .replace('{{rgaa_ia_test_url}}', rgaa_ia_test_url))
+            .replace('{{rgaa_ia_test_url}}', rgaa_ia_test_url)
+            .replace('{{rgaa_audit_url}}', m.get('audit_url') or '')
+            .replace('{{score_pct}}', str(m.get('score_pct') or '')))
 
 
 def pick_target(cur, code_insee=None):
     if code_insee:
         cur.execute("""
-            SELECT code_insee, nom, email, site_url, rgaa_status, rgaa_page_url
-            FROM mairies WHERE code_insee=%s
+            SELECT m.code_insee, m.nom, m.email, m.site_url,
+                   COALESCE(la.conformity, m.rgaa_status) AS rgaa_status,
+                   m.rgaa_page_url, la.audit_url, la.score_pct
+            FROM mairies m
+            LEFT JOIN mairie_latest_audit la
+              ON la.code_insee = m.code_insee AND la.error_reason IS NULL
+            WHERE m.code_insee = %s
         """, (code_insee,))
         row = cur.fetchone()
         if not row:
             refuse(f'code_insee {code_insee} introuvable')
         return row
     cur.execute("""
-        SELECT code_insee, nom, email, site_url, rgaa_status, rgaa_page_url
-        FROM mairies
-        WHERE email IS NOT NULL
-          AND rgaa_status IN ('non_conforme','partiellement')
-          AND contacted_at IS NULL
-          AND unsubscribed_at IS NULL
-        ORDER BY rgaa_status, code_insee
+        SELECT m.code_insee, m.nom, m.email, m.site_url,
+               la.conformity AS rgaa_status,
+               m.rgaa_page_url, la.audit_url, la.score_pct
+        FROM mairies m
+        JOIN mairie_latest_audit la ON la.code_insee = m.code_insee
+        WHERE m.email IS NOT NULL
+          AND la.conformity = 'non_conforme'
+          AND la.error_reason IS NULL
+          AND m.contacted_at IS NULL
+          AND m.unsubscribed_at IS NULL
+        ORDER BY la.score_pct ASC NULLS LAST, m.code_insee
         LIMIT 1
     """)
     row = cur.fetchone()
     if not row:
-        refuse('aucune mairie éligible (pool épuisé)')
+        refuse('aucune mairie éligible (pool épuisé : audit axe-core non_conforme + email + jamais contactée)')
     return row
 
 
@@ -131,7 +147,7 @@ def post_resend(api_key, from_addr, reply_to, to_addr, subject, body):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--code-insee', help='cible précise (override pool)')
-    ap.add_argument('--template', default=str(REPO / 'mail.md'))
+    ap.add_argument('--template', default=str(REPO / 'mail-non_conforme.md'))
     ap.add_argument('--dry-run', action='store_true', help='render + select sans envoyer')
     args = ap.parse_args()
     claim_or_exit()
@@ -149,11 +165,11 @@ def main():
         with conn.cursor() as cur:
             sent_today = check_cap(cur)
             row = pick_target(cur, args.code_insee)
-            keys = ['code_insee', 'nom', 'email', 'site_url', 'rgaa_status', 'rgaa_page_url']
+            keys = ['code_insee', 'nom', 'email', 'site_url', 'rgaa_status', 'rgaa_page_url', 'audit_url', 'score_pct']
             m = dict(zip(keys, row))
 
-            if m['rgaa_status'] not in ('non_conforme', 'partiellement') and not args.code_insee:
-                refuse(f'rgaa_status={m["rgaa_status"]!r} hors cible')
+            if m['rgaa_status'] != 'non_conforme' and not args.code_insee:
+                refuse(f'rgaa_status={m["rgaa_status"]!r} hors cible (non_conforme uniquement)')
 
             subject = render(subject_tpl, m)
             body = render(body_tpl, m)
@@ -162,7 +178,7 @@ def main():
             print(f'  code_insee = {m["code_insee"]}')
             print(f'  nom        = {m["nom"]}')
             print(f'  email      = {m["email"]}')
-            print(f'  rgaa       = {m["rgaa_status"]}  page={m["rgaa_page_url"]}')
+            print(f'  rgaa       = {m["rgaa_status"]}  score={m["score_pct"]}  audit_url={m["audit_url"]}')
             print(f'  cap        = {sent_today}/{DAILY_CAP} envoyés aujourd\'hui')
             print(f'--- SUBJECT ---\n{subject}')
             print(f'--- BODY ---\n{body}')

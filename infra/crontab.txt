@@ -4,11 +4,15 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Boucle d'action : 1 run = 1 action (send_email OU scrape_rgaa OU idle).
-# Démarre 5h UTC, toutes les 15 min jusqu'à 21h UTC. Cap 10 envois/jour
-# enforced par send_email.py — au-delà, les runs servent au scrape RGAA.
-# Décalé de 7 min vs vps-acquire pour ne pas se chevaucher.
-7,22,37,52 5-21 * * * /opt/conform-rgaa-agent/run.sh
+# Audit axe-core RGAA 44 critères (rgaa-ia.fr engine, /opt/rgaa).
+# 4×/jour 6h, 10h, 14h, 18h UTC × 25 = ~100 audits/jour.
+# Source de vérité : mairie_latest_audit (vue sur mairie_audits).
+0 6,10,14,18 * * * /opt/conform-rgaa-agent/scripts/audit_25_daily.sh
 
 # Ingest API hebdomadaire (lundi 03h00 UTC) — refresh emails depuis api-lannuaire
 0 3 * * 1 cd /opt/conform-rgaa-agent && doppler run --project conform-rgaa --config dev -- python3 scripts/ingest_api.py >> logs/ingest.log 2>&1
+
+# 5 emails de prospection Mon-Fri 7h30 Paris (DST-aware via CRON_TZ).
+# CRON_TZ s'applique aux lignes suivantes — gardé en fin de fichier.
+CRON_TZ=Europe/Paris
+30 7 * * 1-5 /opt/conform-rgaa-agent/scripts/send_5_daily.sh

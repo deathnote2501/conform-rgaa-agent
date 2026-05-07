@@ -38,7 +38,7 @@ with psycopg.connect(database_url()) as conn, conn.cursor() as cur:
     cur.execute("""
         SELECT count(*) FROM mairies
         WHERE email IS NOT NULL
-          AND rgaa_status IN ('non_conforme','partiellement')
+          AND rgaa_status = 'non_conforme'
           AND contacted_at IS NULL AND unsubscribed_at IS NULL
     """)
     pool = cur.fetchone()[0]
