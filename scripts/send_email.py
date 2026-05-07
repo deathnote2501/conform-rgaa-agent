@@ -36,7 +36,7 @@ STATUS_HUMAN = {
     'partiel': 'partiellement conforme',
     'conforme': 'totalement conforme',
     # Legacy mairies.rgaa_status vocab (scrape mention) — kept pour --code-insee
-    # sur mairies non auditées par axe-core.
+    # sur mairies non auditées par rgaa-ia.fr.
     'partiellement': 'partiellement conforme',
     'totalement': 'totalement conforme',
     'aucune_mention': 'sans déclaration RGAA publiée',
@@ -107,7 +107,7 @@ def pick_target(cur, code_insee=None):
     """)
     row = cur.fetchone()
     if not row:
-        refuse('aucune mairie éligible (pool épuisé : audit axe-core non_conforme + email + jamais contactée)')
+        refuse('aucune mairie éligible (pool épuisé : audit rgaa-ia.fr non_conforme + email + jamais contactée)')
     return row
 
 

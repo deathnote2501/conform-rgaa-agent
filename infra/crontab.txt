@@ -4,7 +4,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Audit axe-core RGAA 44 critères (rgaa-ia.fr engine, /opt/rgaa).
+# Audit RGAA 44 critères (rgaa-ia.fr / /opt/rgaa).
 # 4×/jour 6h, 10h, 14h, 18h UTC × 25 = ~100 audits/jour.
 # Source de vérité : mairie_latest_audit (vue sur mairie_audits).
 0 6,10,14,18 * * * /opt/conform-rgaa-agent/scripts/audit_25_daily.sh

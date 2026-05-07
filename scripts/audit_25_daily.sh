@@ -1,5 +1,5 @@
 #!/bin/bash
-# audit_25_daily.sh — exécute 25 audits axe-core via le worker rgaa-ia.fr.
+# audit_25_daily.sh — exécute 25 audits RGAA 44 critères via le worker rgaa-ia.fr.
 # Cron : 4×/jour 6h, 10h, 14h, 18h UTC → ~100 audits/jour.
 #
 # Pourquoi un wrapper ? audit-mairies.mjs sélectionne mal au-delà de ~75 mairies
