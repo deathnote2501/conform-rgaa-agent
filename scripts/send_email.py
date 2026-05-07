@@ -10,7 +10,8 @@ Pipeline :
        - contacted_at IS NULL
        - unsubscribed_at IS NULL
   4. Vérifie cap 10/jour UTC (refus exit 1 si dépassé)
-  5. Render placeholders : {{nom}}, {{rgaa_page_url}}, {{rgaa_status_human}}
+  5. Render placeholders : {{nom}}, {{rgaa_page_url}}, {{rgaa_status_human}},
+     {{site_url}}, {{rgaa_ia_test_url}} (= https://rgaa-ia.fr/?url=<site_url>)
   6. POST Resend API → marque contacted_at + last_msg_id
   7. Append memory/contact_log.md
 
@@ -19,7 +20,7 @@ Usage : python3 scripts/send_email.py [--code-insee XXXXX] [--template mail.md] 
 Env requis : RESEND_API_KEY, RESEND_FROM_EMAIL, RESEND_REPLY_TO,
              DATABASE_URL ou (SUPABASE_DB_PASSWORD + SUPABASE_PROJECT_REF).
 """
-import os, sys, json, argparse, urllib.request, datetime, pathlib
+import os, sys, json, argparse, urllib.request, urllib.parse, datetime, pathlib
 import psycopg
 from _db import database_url
 from _action_token import claim_or_exit
@@ -58,10 +59,14 @@ def parse_template(path):
 
 
 def render(text, m):
+    site_url = m['site_url'] or ''
+    rgaa_ia_test_url = f"https://rgaa-ia.fr/?url={urllib.parse.quote(site_url, safe='')}" if site_url else 'https://rgaa-ia.fr/'
     return (text
             .replace('{{nom}}', m['nom'])
             .replace('{{rgaa_status_human}}', STATUS_HUMAN.get(m['rgaa_status'], m['rgaa_status'] or ''))
-            .replace('{{rgaa_page_url}}', m['rgaa_page_url'] or m['site_url'] or ''))
+            .replace('{{rgaa_page_url}}', m['rgaa_page_url'] or m['site_url'] or '')
+            .replace('{{site_url}}', site_url)
+            .replace('{{rgaa_ia_test_url}}', rgaa_ia_test_url))
 
 
 def pick_target(cur, code_insee=None):
@@ -115,6 +120,7 @@ def post_resend(api_key, from_addr, reply_to, to_addr, subject, body):
         headers={
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
+            'User-Agent': 'conform-rgaa-agent/1.0',
         },
         method='POST',
     )
