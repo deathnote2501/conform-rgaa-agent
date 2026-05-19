@@ -30,6 +30,7 @@ PAUSE = REPO / 'PAUSE.flag'
 PAUSE_EMAIL = REPO / 'PAUSE.email.flag'
 CONTACT_LOG = REPO / 'memory' / 'contact_log.md'
 DAILY_CAP = 10
+BCC = 'jerome.iavarone+rgaa-ia@gmail.com'
 
 STATUS_HUMAN = {
     'non_conforme': 'non conforme',
@@ -126,6 +127,7 @@ def post_resend(api_key, from_addr, reply_to, to_addr, subject, body):
     payload = {
         'from': from_addr,
         'to': [to_addr],
+        'bcc': [BCC],
         'reply_to': reply_to,
         'subject': subject,
         'text': body,
@@ -180,6 +182,7 @@ def main():
             print(f'  email      = {m["email"]}')
             print(f'  rgaa       = {m["rgaa_status"]}  score={m["score_pct"]}  audit_url={m["audit_url"]}')
             print(f'  cap        = {sent_today}/{DAILY_CAP} envoyés aujourd\'hui')
+            print(f'  bcc        = {BCC}')
             print(f'--- SUBJECT ---\n{subject}')
             print(f'--- BODY ---\n{body}')
 
