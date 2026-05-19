@@ -8,8 +8,8 @@
 # pour chacun. Coût : 1 chromium boot par audit (~3-5s d'overhead).
 
 cd /opt/conform-rgaa-agent
-LOG="logs/audit.log"
-mkdir -p logs
+LOG="/opt/conform-rgaa-agent/logs/audit.log"
+mkdir -p /opt/conform-rgaa-agent/logs
 
 ts() { date -u +%FT%TZ; }
 echo "[$(ts)] === audit_25_daily.sh start ===" >> "$LOG"
