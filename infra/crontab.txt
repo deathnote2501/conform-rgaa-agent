@@ -11,8 +11,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Scrape footer RGAA (regex/HTML, sans IA) — alimente rgaa_in_footer +
 # rgaa_page_url (signaux légaux : déclaration publiée + lien dans le footer).
-# Indépendant de l'audit technique. Batch 50, 1×/h 5h-21h UTC.
-15 5-21 * * * cd /opt/conform-rgaa-agent && doppler run --project conform-rgaa --config dev -- python3 scripts/scrape_rgaa.py --batch 50 >> logs/scrape.log 2>&1
+# Indépendant de l'audit technique. Batch 50.
+# P4 (2026-06-09) : réduit de 1×/h à 1×/jour (05h15 UTC). Le pool de mairies à
+# scraper est épuisé ("Picked 0" en boucle) → 16 runs/jour à vide. 1×/jour suffit
+# à capter les lignes nouvellement ingérées (cf. ingest_api lundi 03h UTC).
+15 5 * * * cd /opt/conform-rgaa-agent && doppler run --project conform-rgaa --config dev -- python3 scripts/scrape_rgaa.py --batch 50 >> logs/scrape.log 2>&1
 
 # Ingest API hebdomadaire (lundi 03h00 UTC) — refresh emails depuis api-lannuaire
 0 3 * * 1 cd /opt/conform-rgaa-agent && doppler run --project conform-rgaa --config dev -- python3 scripts/ingest_api.py >> logs/ingest.log 2>&1
